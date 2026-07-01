@@ -8,8 +8,10 @@ ScrapeFlow's worker already speaks the OpenAI wire protocol, so no worker code
 changes are needed — a job is configured with `provider=openai_compatible`, this
 deployment's `base_url`, the shared API key, and the model name.
 
-- **Model:** `meta-llama/Llama-3.1-8B-Instruct`
-- **GPU:** A10G (24GB) — FP16 fits with KV-cache headroom
+- **Model:** `Qwen/Qwen3-4B-Instruct-2507` — a *non-thinking* instruct model
+  (no `<think>` reasoning blocks), ideal for schema extraction. Apache-2.0 open
+  weights, so no `HF_TOKEN` needed.
+- **GPU:** L4 (24GB) — Qwen3-4B FP16 (~8GB) fits with large KV-cache headroom
 - **Scaling:** scale-to-zero (`min_containers=0`), 5-min warm window
 - **API:** OpenAI-compatible (`/v1/chat/completions`, `/v1/models`), bearer-token auth,
   `response_format={"type": "json_schema", ...}` structured outputs
@@ -20,9 +22,8 @@ deployment's `base_url`, the shared API key, and the model name.
 pip install -r requirements.txt
 modal setup                       # browser auth (one time)
 modal volume create model-cache   # weight cache across cold starts
-modal secret create llm-secrets \
-  VLLM_API_KEY=<random-token> \
-  HF_TOKEN=<huggingface-token>    # needed for the gated Llama weights
+modal secret create llm-secrets VLLM_API_KEY=<random-token>
+# (No HF_TOKEN needed — Qwen3 is open weights.)
 ```
 
 ## Deploy
@@ -45,6 +46,6 @@ python smoke_test.py   # requires VLLM_ENDPOINT and VLLM_API_KEY env vars
 
 ## Cost note
 
-Never set `min_containers=1` on the free tier — an always-on A10G burns ~$33/day
-and exhausts the $30 monthly credit in under a day. See
+Never set `min_containers=1` on the free tier — an always-on L4 burns ~$24/day
+and exhausts the $30 monthly credit in about a day. See
 `docs/guides/modal-llm-inference.md` in the ScrapeFlow repo for the full cost model.

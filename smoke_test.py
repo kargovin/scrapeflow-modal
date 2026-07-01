@@ -9,7 +9,7 @@ import os
 
 from openai import OpenAI
 
-MODEL = "meta-llama/Llama-3.1-8B-Instruct"
+MODEL = "Qwen/Qwen3-4B-Instruct-2507"
 
 SCHEMA = {
     "type": "object",

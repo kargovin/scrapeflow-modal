@@ -27,9 +27,9 @@ ScrapeFlow's worker does (json_schema `response_format`).
 
 ## Required Modal resources (must exist before deploy)
 
-- Volume `model-cache` — caches the ~16GB weights across cold starts.
-- Secret `llm-secrets` with `VLLM_API_KEY` (bearer token ScrapeFlow sends) and
-  `HF_TOKEN` (pulls the gated Llama weights).
+- Volume `model-cache` — caches the ~8GB weights across cold starts.
+- Secret `llm-secrets` with `VLLM_API_KEY` (bearer token ScrapeFlow sends).
+  No `HF_TOKEN` — Qwen3 is open-weights.
 
 ## The contract with ScrapeFlow — do not break it
 
@@ -52,10 +52,13 @@ Implications when changing this repo:
 ## Cost / scaling constraints (Modal free tier, $30/mo)
 
 - `min_containers=0` (scale-to-zero) is mandatory. **Never set it to 1** — an
-  always-on A10G is ~$33/day and drains the monthly credit in under a day.
+  always-on L4 is ~$24/day and drains the monthly credit in about a day.
 - `scaledown_window=300` trades ~5 min of idle warmth for hidden cold starts
-  during active sessions. Cold start with cached weights is ~10–30s; first-ever
-  download is ~2–5 min.
-- GPU/model sizing: A10G (24GB) holds Llama-3.1-8B FP16 (16GB) + KV cache.
-  Bigger models need a bigger (costlier) GPU — see the sizing table in
-  ScrapeFlow's `docs/guides/modal-llm-inference.md`, the source spec for this repo.
+  during active sessions. Cold start with cached weights is a few seconds
+  (small model); first-ever download is ~1–2 min.
+- GPU/model sizing: L4 (24GB) holds Qwen3-4B FP16 (~8GB) + KV cache with room to
+  spare. Model choice is deliberate — extraction needs no reasoning, so a small
+  *non-thinking* `-Instruct-2507` model is fastest/cheapest. Scaling up (e.g.
+  `Qwen3-8B`, or the base hybrid models) means re-checking VRAM/GPU and, for
+  hybrid Qwen3, suppressing `<think>` output. See the sizing table in
+  ScrapeFlow's `docs/guides/modal-llm-inference.md`, the original spec for this repo.
