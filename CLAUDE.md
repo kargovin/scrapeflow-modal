@@ -28,6 +28,8 @@ ScrapeFlow's worker does (json_schema `response_format`).
 ## Required Modal resources (must exist before deploy)
 
 - Volume `model-cache` — caches the ~8GB weights across cold starts.
+- Volume `vllm-cache` — persists FlashInfer/torch.compile JIT caches (mounted at
+  `~/.cache`) so cold starts skip recompilation. Auto-created (`create_if_missing`).
 - Secret `llm-secrets` with `VLLM_API_KEY` (bearer token ScrapeFlow sends).
   No `HF_TOKEN` — Qwen3 is open-weights.
 

@@ -28,24 +28,45 @@ PORT = 8000
 # vLLM must be recent enough to support Qwen3 (2507 variants) AND OpenAI
 # `response_format={"type": "json_schema", ...}` structured outputs (xgrammar) —
 # the latter is what ScrapeFlow relies on for schema-constrained extraction.
-
-# use hf transfer to speed up the cold start when initially downloading the models
+#
+# Base off the CUDA *-devel* image, not debian_slim: vLLM's FlashInfer backend
+# JIT-compiles attention kernels at runtime and needs `nvcc` + the CUDA toolkit.
+# debian_slim has only the CUDA runtime (bundled in the torch wheel), so engine
+# init fails with "Could not find nvcc / /usr/local/cuda doesn't exist".
+# `.entrypoint([])` clears the base image's entrypoint so Modal controls startup.
+# HF_HUB_ENABLE_HF_TRANSFER speeds up the one-time weight download on cold start.
 image = (
-    modal.Image.debian_slim(python_version="3.12")
-    .pip_install("vllm>=0.10.0", "huggingface_hub[hf_transfer]>=0.27.1")
-    .env({"HF_HUB_ENABLE_HF_TRANSFER": "1"})
+    modal.Image.from_registry(
+        "nvidia/cuda:12.9.0-devel-ubuntu22.04", add_python="3.12"
+    )
+    .entrypoint([])
+    .pip_install("vllm==0.21.0", "huggingface_hub[hf_transfer]>=0.27.1")
+    .env(
+        {
+            "HF_HUB_ENABLE_HF_TRANSFER": "1",
+            # Keep torch-inductor's cache under ~/.cache (default is a /tmp dir)
+            # so it lands on the persisted cache volume mounted there below.
+            "TORCHINDUCTOR_CACHE_DIR": "/root/.cache/torchinductor",
+        }
+    )
 )
 
 app = modal.App("scrapeflow-llm")
 
+CACHE_DIR = "/root/.cache"
+
 # Persist downloaded weights (~8GB) across cold starts.
 model_volume = modal.Volume.from_name("model-cache", create_if_missing=True)
+# Persist JIT/compile caches (FlashInfer kernels, vLLM torch.compile artifacts)
+# across cold starts — these all default to ~/.cache, so mounting a volume there
+# lets a cold container reuse them instead of recompiling (~10–30s) every time.
+cache_volume = modal.Volume.from_name("vllm-cache", create_if_missing=True)
 
 
 @app.function(
     image=image,
     gpu=GPU,
-    volumes={MODELS_DIR: model_volume},
+    volumes={MODELS_DIR: model_volume, CACHE_DIR: cache_volume},
     # llm-secrets provides VLLM_API_KEY (the bearer token ScrapeFlow sends).
     # Qwen3 is open-weights, so no HF_TOKEN is needed to download it.
     secrets=[modal.Secret.from_name("llm-secrets")],
