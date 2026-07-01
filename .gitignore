@@ -1,0 +1,23 @@
+# Environment / secrets
+.env
+.env.local
+secret.txt
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# Modal
+.modal.toml
+
+# IDE / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store

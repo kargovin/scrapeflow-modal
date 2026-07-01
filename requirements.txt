@@ -1,0 +1,3 @@
+# Local tooling only — vLLM and its GPU deps are installed inside the Modal
+# image (see modal_llm.py), not here.
+modal>=0.64
