@@ -44,6 +44,21 @@ curl https://<endpoint>/v1/models -H "Authorization: Bearer $VLLM_API_KEY"
 python smoke_test.py   # requires VLLM_ENDPOINT and VLLM_API_KEY env vars
 ```
 
+## Rotating the token
+
+In your own terminal — never paste the token into a chat or a `!` command.
+
+```bash
+T="sk-$(openssl rand -hex 32)"     # the sk- prefix is convention only; vLLM compares the whole string
+modal secret create llm-secrets VLLM_API_KEY="$T" --force
+modal app rollover scrapeflow-llm --strategy recreate
+```
+
+⚠️ A running container keeps the token it started with, and `modal deploy` **skips** a secret-only change
+("no changes detected") — the rollover (CLI or the dashboard's deployment history) is what replaces it.
+Verified 2026-10-12. Then register `$T` as a new ScrapeFlow LLM key (`POST /users/llm-keys`), delete the
+old one, and `unset T`.
+
 ## Cost note
 
 Never set `min_containers=1` on the free tier — an always-on L4 burns ~$24/day
